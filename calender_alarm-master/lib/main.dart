@@ -6,15 +6,20 @@ import 'package:calender_alarm/event_provider.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  runApp(const AlarmCalender());
+  EventProvider eventProvider = EventProvider();
+  eventProvider.start();
+  runApp(AlarmCalender(eventProvider: eventProvider));
 }
 
 class AlarmCalender extends StatelessWidget {
-  const AlarmCalender({super.key}); //123
+  final EventProvider eventProvider;
+
+  const AlarmCalender({Key? key, required this.eventProvider})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) => ChangeNotifierProvider(
-        create: (context) => EventProvider(),
+        create: (context) => eventProvider,
         child: MaterialApp(
           debugShowCheckedModeBanner: false,
           theme: ThemeData(

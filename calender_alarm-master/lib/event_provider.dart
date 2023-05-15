@@ -6,8 +6,10 @@ import 'package:dio/dio.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_alarm_clock/flutter_alarm_clock.dart';
+import 'package:intl/intl.dart';
+import 'dart:async';
+import 'dart:isolate';
 
 class EventProvider extends ChangeNotifier {
   List<Event> _events = [];
@@ -22,39 +24,47 @@ class EventProvider extends ChangeNotifier {
 
   List<Event> get eventsOfSelectedDate => _events;
 
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  late StreamSubscription<DateTime> _subscription;
+  late Isolate _isolate;
+  late ReceivePort _receivePort;
 
-  EventProvider() {
-    final InitializationSettings initializationSettings =
-        InitializationSettings(
-      android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-    );
-    flutterLocalNotificationsPlugin.initialize(initializationSettings);
-    tz.initializeTimeZones();
+  void start() async {
+    _receivePort = ReceivePort();
+    _isolate = await Isolate.spawn(_run, _receivePort.sendPort);
+    _receivePort.listen((message) {
+      if (message is List<Event>) {
+        _events = message;
+        for (var item in _events) {
+          DateTime dateTime = DateTime.parse(item.from.toString());
+          DateTime now = DateTime.now();
+          DateTime today = DateTime(now.year, now.month, now.day);
+          String formattedDate = DateFormat('yyyy-MM-dd').format(dateTime);
+          bool isToday =
+              formattedDate == DateFormat('yyyy-MM-dd').format(today);
+          if (isToday) {
+            int hours = dateTime.hour; // Returns 18
+            int minutes = dateTime.minute; // Returns 45
+            FlutterAlarmClock.createAlarm(hours, minutes,
+                title: item.title.toString());
+          }
+        }
+      }
+    });
   }
 
-  Future<void> scheduleNotification(DateTime dateTime, String title) async {
-    final AndroidNotificationDetails androidPlatformChannelSpecifics =
-        AndroidNotificationDetails(
-      'test',
-      'test',
-      importance: Importance.max,
-      priority: Priority.high,
-      ticker: 'ticker',
-    );
-    final NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: androidPlatformChannelSpecifics,
-    );
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      1,
-      title,
-      'Event reminder',
-      tz.TZDateTime.from(dateTime, tz.local),
-      platformChannelSpecifics,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-    );
+  static void _run(SendPort sendPort) async {
+    while (true) {
+      try {
+        final url = Uri.parse('http://10.0.2.2/GetAllDate.php');
+        final response = await http.get(url);
+        final data = jsonDecode(response.body) as List<dynamic>;
+        final events = data.map((item) => Event.fromJson(item)).toList();
+        sendPort.send(events);
+      } catch (e) {
+        print('Error fetching events: $e');
+      }
+      await Future.delayed(Duration(days: 1));
+    }
   }
 
   void addEvent(Event event) {
@@ -70,8 +80,20 @@ class EventProvider extends ChangeNotifier {
         .then((response) => print(response.body))
         .catchError((error) => print(error));
     _events.add(event);
-    scheduleNotification(event.from, event.title); // Schedule the notification
     notifyListeners();
+
+    DateTime dateTime = DateTime.parse(event.from.toString());
+    DateTime now = DateTime.now();
+    DateTime today = DateTime(now.year, now.month, now.day);
+    String formattedDate = DateFormat('yyyy-MM-dd').format(dateTime);
+    bool isToday = formattedDate == DateFormat('yyyy-MM-dd').format(today);
+
+    if (isToday) {
+      print('Alarm set');
+      int hours = dateTime.hour; // Returns 18
+      int minutes = dateTime.minute; // Returns 45
+      FlutterAlarmClock.createAlarm(hours, minutes);
+    }
   }
 
   void deleteEvent(Event event) {
@@ -108,17 +130,5 @@ class EventProvider extends ChangeNotifier {
     final index = _events.indexOf(oldEvent);
     _events[index] = newEvent;
     notifyListeners();
-  }
-
-  Future<void> fetchEvents() async {
-    final response =
-        await http.get(Uri.parse('http://10.0.2.2/GetAllDate.php'));
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body) as List<dynamic>;
-      _events = data.map((e) => Event.fromJson(e)).toList();
-      notifyListeners();
-    } else {
-      throw Exception('Failed to fetch events');
-    }
   }
 }
