@@ -43,6 +43,7 @@ class CalenderPage extends StatelessWidget {
     if (details.targetElement == CalendarElement.calendarCell) {
       final DateTime date = details.date!;
       final Event newEvent = Event(
+        id: 1,
         title: '',
         description: '',
         from: date,
@@ -62,6 +63,7 @@ class CalenderPage extends StatelessWidget {
     if (details.targetElement == CalendarElement.calendarCell) {
       final DateTime date = details.date!;
       final Event newEvent = Event(
+        id: 1,
         title: '',
         description: '',
         from: date,
