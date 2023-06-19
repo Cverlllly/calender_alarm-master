@@ -4,9 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:calender_alarm/register_page.dart';
-import 'package:provider/provider.dart';
-import 'package:calender_alarm/user_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http; // Import the http package
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -15,15 +13,11 @@ class LoginPage extends StatefulWidget {
   _LoginPageState createState() => _LoginPageState();
 }
 
+int id = 0;
+
 class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-
-  void saveLoginStatus(bool isLoggedIn, String userId) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setBool('isLoggedIn', isLoggedIn);
-    prefs.setString('userId', userId);
-  }
 
   void navigateToRegisterPage() {
     Navigator.push(
@@ -39,38 +33,58 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 
-  void login() {
+  void login() async {
     final String email = _emailController.text;
     final String password = _passwordController.text;
     final hashedPassword = sha256.convert(utf8.encode(password)).toString();
 
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    final registeredUsers = userProvider.registeredUsers;
+    // Make an HTTP POST request to the login API endpoint
+    final response = await http.put(Uri.parse(
+        'http://10.0.2.2/GetUserId.php?user=' +
+            email +
+            "&pass=" +
+            hashedPassword));
+    print(response.request);
 
-    bool isUserFound = false;
-    String userId = "";
-    for (final user in registeredUsers) {
-      if (user.email == email && user.password == hashedPassword) {
-        isUserFound = true;
-        userId = user.id;
-        break;
+    if (response.statusCode == 200) {
+      // API request successful
+      print(response.body); // Debugging purpose (you can remove this line
+      final responseBody = json.decode(response.body);
+
+      final bool isUserFound = responseBody['isUserFound'];
+      final int userId = responseBody['userId'];
+      final String test_id = userId.toString();
+      id = userId;
+
+      if (isUserFound) {
+        // User found, perform the necessary actions (e.g., navigate to the root page)
+        navigateToRootPage();
+        saveLoginStatus(true, test_id);
+      } else {
+        // User not found, show an error message or handle unsuccessful login
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Login Failed'),
+            content: const Text('Invalid email or password.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          ),
+        );
       }
-    }
-
-    if (isUserFound) {
-      // User found, perform the necessary actions (e.g., navigate to the root page)
-      navigateToRootPage();
-      saveLoginStatus(
-        true,
-        userId,
-      );
     } else {
-      // User not found, show an error message or handle unsuccessful login
+      // API request failed, show an error message
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Login Failed'),
-          content: const Text('Invalid email or password.'),
+          title: const Text('Error'),
+          content: const Text('Failed to connect to the server.'),
           actions: [
             TextButton(
               onPressed: () {
@@ -82,6 +96,11 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
     }
+  }
+
+  void saveLoginStatus(bool isLoggedIn, String userId) async {
+    // Save the login status and user ID using a suitable method
+    // For example, you can use shared_preferences package like before
   }
 
   @override

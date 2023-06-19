@@ -16,6 +16,7 @@ class EventEditingPage extends StatefulWidget {
   State<EventEditingPage> createState() => _EventEditingPageState();
 }
 
+
 class _EventEditingPageState extends State<EventEditingPage> {
   final _formKey = GlobalKey<FormState>();
   final titleController = TextEditingController();
@@ -23,10 +24,11 @@ class _EventEditingPageState extends State<EventEditingPage> {
   final descriptionController = TextEditingController();
   late Color tileColor = Colors.green;
 
+
+
   @override
   void initState() {
     super.initState();
-
     if (widget.event == null) {
       fromDate = DateTime.now();
     } else {
@@ -283,6 +285,7 @@ class _EventEditingPageState extends State<EventEditingPage> {
 
     if (isValid) {
       final event = Event(
+          id: 1,
           title: titleController.text,
           description: descriptionController.text,
           from: fromDate,
@@ -302,3 +305,4 @@ class _EventEditingPageState extends State<EventEditingPage> {
     }
   }
 }
+  

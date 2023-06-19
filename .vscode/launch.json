@@ -1,0 +1,28 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "calender_alarm-master",
+            "cwd": "calender_alarm-master",
+            "request": "launch",
+            "type": "dart"
+        },
+        {
+            "name": "calender_alarm-master (profile mode)",
+            "cwd": "calender_alarm-master",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "profile"
+        },
+        {
+            "name": "calender_alarm-master (release mode)",
+            "cwd": "calender_alarm-master",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release"
+        }
+    ]
+}

@@ -5,6 +5,7 @@ import 'package:calender_alarm/user_provider.dart';
 import 'package:calender_alarm/users.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http; // Import the http package
 import 'package:calender_alarm/login.dart';
 import 'package:provider/provider.dart'; // Import the LoginPage
 
@@ -28,7 +29,7 @@ class _RegisterPageState extends State<RegisterPage> {
     );
   }
 
-  void _register() {
+  void _register() async {
     final String email = _emailController.text;
     final String password = _passwordController.text;
     final String confirmPassword = _confirmPasswordController.text;
@@ -62,22 +63,75 @@ class _RegisterPageState extends State<RegisterPage> {
           },
         );
       } else {
-        // Generate a unique ID for the new user
-        final String newUserId = const Uuid().v4();
+        try {
+          // Generate a unique ID for the new user
+          final String newUserId = const Uuid().v4();
 
-        // Hash the password
-        final hashedPassword = sha256.convert(utf8.encode(password)).toString();
+          // Hash the password
+          final hashedPassword =
+              sha256.convert(utf8.encode(password)).toString();
 
-        // Save registration data
-        final registrationData =
-            RegistrationData(newUserId, email, hashedPassword);
-        provider.addUser(registrationData);
+          // Prepare the registration data
+          final registrationData = {
+            'user': email,
+            'pass': hashedPassword,
+          };
 
-        // Navigate to the next page
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginPage()),
-        );
+          // Send an HTTP POST request to the API endpoint
+          final response = await http.post(
+            Uri.parse('http://10.0.2.2/AddUser.php'),
+            body: registrationData,
+          );
+
+          if (response.statusCode == 200) {
+            // Registration successful
+            // You can optionally handle the response from the API here
+
+            // Navigate to the next page
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginPage()),
+            );
+          } else {
+            // Registration failed
+            showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return AlertDialog(
+                  title: const Text('Registration Failed'),
+                  content: const Text('An error occurred during registration.'),
+                  actions: [
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: const Text('OK'),
+                    ),
+                  ],
+                );
+              },
+            );
+          }
+        } catch (e) {
+          // Error occurred during the HTTP request
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Registration Failed'),
+                content: const Text('An error occurred during registration.'),
+                actions: [
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('OK'),
+                  ),
+                ],
+              );
+            },
+          );
+        }
       }
     } else {
       // Passwords don't match or fields are empty
